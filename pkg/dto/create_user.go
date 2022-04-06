@@ -3,8 +3,10 @@ package dto
 import "user-service/internal/core/domain"
 
 type BodyCreateUser struct {
+	ID       string
 	Name     string
 	LastName string
+	Email    string
 }
 
 type ResponseCreateUser domain.User

@@ -4,7 +4,9 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"github.com/swaggo/gin-swagger/swaggerFiles"
 	"github.com/swaggo/swag/example/basic/docs"
+	"net/http"
 	"user-service/internal/core/ports"
+	"user-service/pkg/authorization"
 	"user-service/pkg/dto"
 )
 import "github.com/gin-gonic/gin"
@@ -23,10 +25,10 @@ func NewRest(userService ports.UserService, router *gin.Engine) *HTTPHandler {
 
 func (handler *HTTPHandler) SetupEndpoints() {
 	api := handler.router.Group("/api")
-	api.GET("/user/all", handler.GetAll)
-	api.GET("/user", handler.Get)
-	api.POST("/user", handler.Create)
-	api.PUT("/user/:id", handler.Update)
+	api.GET("/users", handler.GetAll)
+	api.GET("/users/:id", handler.Get)
+	api.POST("/users", handler.Create)
+	api.PUT("/users/:id", handler.Update)
 }
 
 func (handler *HTTPHandler) SetupSwagger() {
@@ -43,16 +45,21 @@ func (handler *HTTPHandler) SetupSwagger() {
 // @Accept       json
 // @Produce      json
 // @Success      200  {object}  []domain.User
-// @Router       /api/users/all [get]
+// @Router       /api/users [get]
 func (handler *HTTPHandler) GetAll(c *gin.Context) {
-	users, err := handler.userService.GetAll()
+	if authorization.NewRest(c).AuthorizeAdmin() {
 
-	if err != nil {
-		c.AbortWithStatus(404)
-		return
+		users, err := handler.userService.GetAll()
+
+		if err != nil {
+			c.AbortWithStatus(http.StatusNotFound)
+			return
+		}
+
+		c.JSON(http.StatusOK, users)
 	}
 
-	c.JSON(200, users)
+	c.AbortWithStatus(http.StatusUnauthorized)
 }
 
 // Get godoc
@@ -62,16 +69,23 @@ func (handler *HTTPHandler) GetAll(c *gin.Context) {
 // @Description  gets a user from the system by its ID
 // @Produce      json
 // @Success      200  {object}  domain.User
-// @Router       /api/user [get]
+// @Router       /api/users/{id} [get]
 func (handler *HTTPHandler) Get(c *gin.Context) {
-	user, err := handler.userService.Get(c.GetHeader("X-User-Id"))
+	auth := authorization.NewRest(c)
 
-	if err != nil {
-		c.AbortWithError(404, err)
-		return
+	if auth.AuthorizeAdmin() || auth.AuthorizeMatchingId(c.Param("id")) {
+
+		user, err := handler.userService.Get(c.Param("id"))
+
+		if err != nil {
+			c.AbortWithStatus(http.StatusNotFound)
+			return
+		}
+
+		c.JSON(http.StatusOK, user)
 	}
 
-	c.JSON(200, user)
+	c.AbortWithStatus(http.StatusUnauthorized)
 }
 
 // Create godoc
@@ -88,17 +102,24 @@ func (handler *HTTPHandler) Create(c *gin.Context) {
 	err := c.BindJSON(&body)
 
 	if err != nil {
-		c.AbortWithStatus(500)
+		c.AbortWithStatus(http.StatusBadRequest)
 	}
 
-	user, err := handler.userService.Create(c.GetHeader("X-User-Id"), body.Name, body.LastName, c.GetHeader("X-User-Email"))
+	auth := authorization.NewRest(c)
 
-	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{"message": err.Error()})
-		return
+	if auth.AuthorizeAdmin() || auth.AuthorizeMatchingId(body.ID) {
+
+		user, err := handler.userService.Create(body.ID, body.Name, body.LastName, body.Email)
+
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusCreated, dto.BuildResponseCreateUser(user))
 	}
 
-	c.JSON(200, dto.BuildResponseCreateUser(user))
+	c.AbortWithStatus(http.StatusUnauthorized)
 }
 
 // Update godoc
@@ -112,19 +133,27 @@ func (handler *HTTPHandler) Create(c *gin.Context) {
 // @Success      200  {object}  dto.ResponseUpdateUser
 // @Router       /api/users/{id} [put]
 func (handler *HTTPHandler) Update(c *gin.Context) {
-	body := dto.BodyCreateUser{}
-	err := c.BindJSON(&body)
+	auth := authorization.NewRest(c)
 
-	if err != nil {
-		c.AbortWithStatus(500)
+	if auth.AuthorizeAdmin() || auth.AuthorizeMatchingId(c.Param("id")) {
+
+		body := dto.BodyCreateUser{}
+		err := c.BindJSON(&body)
+
+		if err != nil {
+			c.AbortWithStatus(http.StatusBadRequest)
+		}
+
+		user, err := handler.userService.UpdateUserDetails(c.Param("id"), body.Name, body.LastName, body.Email)
+
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, dto.BuildResponseCreateUser(user))
+
 	}
 
-	user, err := handler.userService.UpdateUserDetails(c.Param("id"), body.Name, body.LastName, "")
-
-	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{"message": err.Error()})
-		return
-	}
-
-	c.JSON(200, dto.BuildResponseCreateUser(user))
+	c.AbortWithStatus(http.StatusUnauthorized)
 }

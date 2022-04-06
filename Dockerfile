@@ -17,7 +17,7 @@ RUN set -x && apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -
 
 COPY --from=rest /app/server /app/server
 
-LABEL traefik.http.routers.user-service.rule=PathPrefix(`/api/user`)
+LABEL traefik.http.routers.user-service.rule=PathPrefix(`/api/users`)
 LABEL traefik.enable=true
 LABEL traefik.http.routers.user-service.entrypoints=web
 LABEL traefik.http.routers.user-service.middlewares='serviceheaders, traefik-forward-auth'
