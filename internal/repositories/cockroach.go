@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"errors"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"user-service/internal/core/domain"
@@ -12,14 +11,8 @@ type cockroachdb struct {
 	Connection *gorm.DB
 }
 
-func NewCockroachDB(connStr string) (*cockroachdb, error) {
-	db, err := gorm.Open(postgres.Open(connStr))
-
-	if err != nil {
-		return nil, err
-	}
-
-	err = db.AutoMigrate(&domain.User{})
+func NewCockroachDB(db *gorm.DB) (*cockroachdb, error) {
+	err := db.AutoMigrate(&domain.User{})
 
 	if err != nil {
 		return nil, err

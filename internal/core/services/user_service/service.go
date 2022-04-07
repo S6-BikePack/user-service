@@ -27,9 +27,13 @@ func (srv *service) Get(id string) (domain.User, error) {
 }
 
 func (srv *service) Create(id, name, lastName, email string) (domain.User, error) {
-	user := domain.NewUser(id, name, lastName, email)
+	user, err := domain.NewUser(id, name, lastName, email)
 
-	user, err := srv.userRepository.Save(user)
+	if err != nil {
+		return domain.User{}, err
+	}
+
+	user, err = srv.userRepository.Save(user)
 
 	if err != nil {
 		return domain.User{}, errors.New("saving new user failed")
