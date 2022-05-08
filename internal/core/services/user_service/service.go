@@ -39,35 +39,46 @@ func (srv *service) Create(id, name, lastName, email string) (domain.User, error
 		return domain.User{}, errors.New("saving new user failed")
 	}
 
-	srv.messagePublisher.CreateUser(user)
+	err = srv.messagePublisher.CreateUser(user)
+
+	if err != nil {
+		return domain.User{}, err
+	}
+
 	return user, nil
 }
 
 func (srv *service) UpdateUserDetails(id string, name, lastName, email string) (domain.User, error) {
-	user, err := srv.Get(id)
+	existing, err := srv.Get(id)
+	updated := existing
 
 	if err != nil {
 		return domain.User{}, errors.New("could not find user with id")
 	}
 
 	if name != "" {
-		user.Name = name
+		updated.Name = name
 	}
 
 	if lastName != "" {
-		user.LastName = lastName
+		updated.LastName = lastName
 	}
 
 	if email != "" {
-		user.Email = email
+		updated.Email = email
 	}
 
-	user, err = srv.userRepository.Update(user)
+	updated, err = srv.userRepository.Update(updated)
 
 	if err != nil {
-		return domain.User{}, errors.New("saving new user failed")
+		return existing, errors.New("saving new user failed")
 	}
 
-	srv.messagePublisher.UpdateUserDetails(user)
-	return user, nil
+	err = srv.messagePublisher.UpdateUserDetails(updated)
+
+	if err != nil {
+		return updated, err
+	}
+
+	return updated, nil
 }
