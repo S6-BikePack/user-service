@@ -1,6 +1,7 @@
 <div align="center">
-
-  <img src="assets/logo.png" alt="logo" width="200" height="auto" />
+  <a href="https://github.com/S6-BikePack">
+    <img src="assets/logo.png" alt="logo" width="200" height="auto" />
+  </a>
   <h1>BikePack - User-Service</h1>
 
   <p>
