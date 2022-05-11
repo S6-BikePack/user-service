@@ -1,0 +1,14 @@
+FROM scratch
+COPY user-service /
+
+LABEL traefik.http.routers.user-service.rule=PathPrefix(`/api/users`)
+LABEL traefik.enable=true
+LABEL traefik.http.routers.user-service.entrypoints=web
+LABEL traefik.http.routers.user-service.middlewares='serviceheaders, traefik-forward-auth'
+LABEL traefik.http.middlewares.serviceheaders.headers.accesscontrolalloworiginlist=*
+LABEL traefik.http.middlewares.serviceheaders.headers.accessControlAllowMethods='GET, POST'
+LABEL traefik.http.middlewares.serviceheaders.headers.accessControlAllowHeaders='authorization, content-type'
+
+EXPOSE 1234
+
+ENTRYPOINT ["/user-service"]
