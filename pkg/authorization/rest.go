@@ -32,11 +32,9 @@ func NewRest(context *gin.Context) *RestAuthorization {
 
 func (auth *RestAuthorization) AuthorizeAdmin() bool {
 	v, exist := auth.claims["admin"]
-
 	return exist && v == true
 }
 
 func (auth *RestAuthorization) AuthorizeMatchingId(id string) bool {
-
 	return auth.id == id
 }

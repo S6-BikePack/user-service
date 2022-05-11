@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"context"
 	"errors"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -25,10 +26,10 @@ func NewCockroachDB(db *gorm.DB) (*cockroachdb, error) {
 	return &database, nil
 }
 
-func (repository *cockroachdb) Get(id string) (domain.User, error) {
+func (repository *cockroachdb) Get(ctx context.Context, id string) (domain.User, error) {
 	var user domain.User
 
-	repository.Connection.Preload(clause.Associations).First(&user, "id = ?", id)
+	repository.Connection.WithContext(ctx).Preload(clause.Associations).First(&user, "id = ?", id)
 
 	if (user == domain.User{}) {
 		return user, errors.New("user not found")
@@ -37,16 +38,16 @@ func (repository *cockroachdb) Get(id string) (domain.User, error) {
 	return user, nil
 }
 
-func (repository *cockroachdb) GetAll() ([]domain.User, error) {
+func (repository *cockroachdb) GetAll(ctx context.Context) ([]domain.User, error) {
 	var users []domain.User
 
-	repository.Connection.Find(&users)
+	repository.Connection.WithContext(ctx).Find(&users)
 
 	return users, nil
 }
 
-func (repository *cockroachdb) Save(user domain.User) (domain.User, error) {
-	result := repository.Connection.Create(&user)
+func (repository *cockroachdb) Save(ctx context.Context, user domain.User) (domain.User, error) {
+	result := repository.Connection.WithContext(ctx).Create(&user)
 
 	if result.Error != nil {
 		return domain.User{}, result.Error
@@ -55,8 +56,8 @@ func (repository *cockroachdb) Save(user domain.User) (domain.User, error) {
 	return user, nil
 }
 
-func (repository *cockroachdb) Update(user domain.User) (domain.User, error) {
-	result := repository.Connection.Model(&user).Updates(user)
+func (repository *cockroachdb) Update(ctx context.Context, user domain.User) (domain.User, error) {
+	result := repository.Connection.WithContext(ctx).Model(&user).Updates(user)
 
 	if result.Error != nil {
 		return domain.User{}, result.Error

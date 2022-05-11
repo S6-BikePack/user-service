@@ -1,59 +1,117 @@
 package main
 
 import (
+	"context"
+	"fmt"
+	"github.com/uptrace/opentelemetry-go-extra/otelgorm"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"log"
 	"os"
-	"user-service/internal/core/services/rabbitmq_service"
-	"user-service/internal/core/services/user_service"
+	"user-service/config"
+	"user-service/internal/core/services"
 	"user-service/internal/handlers"
 	"user-service/internal/repositories"
+	"user-service/pkg/logging"
 	"user-service/pkg/rabbitmq"
+	"user-service/pkg/tracing"
 
 	"github.com/gin-gonic/gin"
 )
 
-const defaultPort = ":1234"
-const defaultRmqConn = "amqp://user:password@localhost:5672/"
-const defaultDbConn = "postgresql://user:password@localhost:5432/user"
+const defaultConfig = "./config/local.config"
 
 func main() {
-	dbConn := GetEnvOrDefault("DATABASE", defaultDbConn)
-
-	db, err := gorm.Open(postgres.Open(dbConn))
+	cfgPath := GetEnvOrDefault("config", defaultConfig)
+	cfg, err := config.UseConfig(cfgPath)
 
 	if err != nil {
 		panic(err)
+	}
+
+	//--------------------------------------------------------------------------------------
+	// Setup Logging and Tracing
+	//--------------------------------------------------------------------------------------
+
+	logger, err := logging.NewSugaredOtelZap(cfg)
+	defer func(logger *logging.OtelzapSugaredLogger) {
+		err = logger.Close()
+		if err != nil {
+			panic(err)
+		}
+	}(logger)
+
+	if err != nil {
+		panic(err)
+	}
+
+	tracer, err := tracing.NewOpenTracing(cfg.Server.Service, cfg.Tracing.Host, cfg.Tracing.Port)
+
+	if err != nil {
+		panic(err)
+	}
+
+	//--------------------------------------------------------------------------------------
+	// Setup Database
+	//--------------------------------------------------------------------------------------
+
+	dsn := fmt.Sprintf("host=%s port=%d user=%s "+
+		"password=%s dbname=%s sslmode=disable",
+		cfg.Database.Host, cfg.Database.Port, cfg.Database.User, cfg.Database.Password, cfg.Database.Database)
+	db, err := gorm.Open(postgres.Open(dsn))
+
+	if err != nil {
+		logger.Fatal(context.Background(), err)
+	}
+
+	if cfg.Database.Debug {
+		db.Debug()
+	}
+
+	if err = db.Use(otelgorm.NewPlugin(otelgorm.WithTracerProvider(tracer))); err != nil {
+		panic(err)
+	}
+
+	if err != nil {
+		logger.Fatal(context.Background(), err)
 	}
 
 	userRepository, err := repositories.NewCockroachDB(db)
 
 	if err != nil {
-		panic(err)
+		logger.Fatal(context.Background(), err)
 	}
 
-	rmqConn := GetEnvOrDefault("RABBITMQ", defaultRmqConn)
+	//--------------------------------------------------------------------------------------
+	// Setup RabbitMQ
+	//--------------------------------------------------------------------------------------
 
-	rmqServer, err := rabbitmq.NewRabbitMQ(rmqConn)
+	rmqServer, err := rabbitmq.NewRabbitMQ(cfg)
 
 	if err != nil {
-		panic(err)
+		logger.Fatal(context.Background(), err)
 	}
 
-	rmqPublisher := rabbitmq_service.NewRabbitMQPublisher(rmqServer)
+	rmqPublisher := services.NewRabbitMQPublisher(rmqServer, tracer, cfg)
 
-	userService := user_service.New(userRepository, rmqPublisher)
+	//--------------------------------------------------------------------------------------
+	// Setup Services
+	//--------------------------------------------------------------------------------------
+
+	userService := services.New(userRepository, rmqPublisher)
+
+	//--------------------------------------------------------------------------------------
+	// Setup HTTP server
+	//--------------------------------------------------------------------------------------
 
 	router := gin.New()
+	router.Use(otelgin.Middleware(cfg.Server.Service, otelgin.WithTracerProvider(tracer)))
 
-	userHandler := handlers.NewRest(userService, router)
-	userHandler.SetupEndpoints()
-	userHandler.SetupSwagger()
+	deliveryHandler := handlers.NewRest(userService, router, logger, cfg)
+	deliveryHandler.SetupEndpoints()
+	deliveryHandler.SetupSwagger()
 
-	port := GetEnvOrDefault("PORT", defaultPort)
-
-	log.Fatal(router.Run(port))
+	logger.Fatal(context.Background(), router.Run(cfg.Server.Port))
 }
 
 func GetEnvOrDefault(environmentKey, defaultValue string) string {
