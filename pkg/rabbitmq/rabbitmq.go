@@ -1,9 +1,9 @@
 package rabbitmq
 
 import (
-	"customer-service/config"
 	"fmt"
 	amqp "github.com/rabbitmq/amqp091-go"
+	"user-service/config"
 )
 
 type RabbitMQ struct {

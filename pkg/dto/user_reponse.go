@@ -9,11 +9,11 @@ type UserResponse struct {
 	Email    string `json:"email"`
 }
 
-func CreateUserResponse(customer domain.User) UserResponse {
+func CreateUserResponse(user domain.User) UserResponse {
 	return UserResponse{
-		ID:       customer.ID,
-		Name:     customer.Name,
-		LastName: customer.LastName,
-		Email:    customer.Email,
+		ID:       user.ID,
+		Name:     user.Name,
+		LastName: user.LastName,
+		Email:    user.Email,
 	}
 }

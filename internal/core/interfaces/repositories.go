@@ -8,6 +8,6 @@ import (
 type UserRepository interface {
 	GetAll(ctx context.Context) ([]domain.User, error)
 	Get(ctx context.Context, id string) (domain.User, error)
-	Save(ctx context.Context, customer domain.User) (domain.User, error)
-	Update(ctx context.Context, customer domain.User) (domain.User, error)
+	Save(ctx context.Context, user domain.User) (domain.User, error)
+	Update(ctx context.Context, user domain.User) (domain.User, error)
 }

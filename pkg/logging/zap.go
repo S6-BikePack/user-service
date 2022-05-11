@@ -2,9 +2,9 @@ package logging
 
 import (
 	"context"
-	"customer-service/config"
 	"github.com/uptrace/opentelemetry-go-extra/otelzap"
 	"go.uber.org/zap"
+	"user-service/config"
 )
 
 type Logger interface {
