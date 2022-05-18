@@ -16,7 +16,7 @@
       "port": 5432,
       "user": "user",
       "password": "password",
-      "database": "user",
+      "database": "bikepack-user",
       "debug": true
     }
   }

@@ -96,6 +96,8 @@ func (suite *UserRepositoryTestSuite) TestRepository_Save() {
 }
 
 func (suite *UserRepositoryTestSuite) TestRepository_Update() {
+	suite.TestDb.Exec("INSERT INTO public.users (id, name, last_name, email) VALUES ('test-id-2', 'test-name', 'test-lastname', 'test@email.com')")
+
 	updated := suite.TestData.User
 	updated.ID = "test-id-2"
 	updated.Name = "test-name-3"
@@ -108,7 +110,7 @@ func (suite *UserRepositoryTestSuite) TestRepository_Update() {
 	suite.TestDb.Raw("SELECT * FROM public.users WHERE id=?",
 		updated.ID).Scan(&queryResult)
 
-	suite.EqualValues(queryResult.Name, updated.Name)
+	suite.EqualValues(updated.Name, queryResult.Name)
 }
 
 func TestIntegration_UserRepositoryTestSuite(t *testing.T) {
