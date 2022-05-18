@@ -7,30 +7,30 @@ import (
 	"user-service/internal/core/interfaces"
 )
 
-type service struct {
+type userService struct {
 	userRepository   interfaces.UserRepository
 	messagePublisher interfaces.MessageBusPublisher
 }
 
-func New(riderRepository interfaces.UserRepository, messagePublisher interfaces.MessageBusPublisher) *service {
-	return &service{
+func NewUserService(riderRepository interfaces.UserRepository, messagePublisher interfaces.MessageBusPublisher) *userService {
+	return &userService{
 		userRepository:   riderRepository,
 		messagePublisher: messagePublisher,
 	}
 }
 
-func (srv *service) GetAll(ctx context.Context) ([]domain.User, error) {
+func (srv *userService) GetAll(ctx context.Context) ([]domain.User, error) {
 	return srv.userRepository.GetAll(ctx)
 }
 
-func (srv *service) Get(ctx context.Context, id string) (domain.User, error) {
+func (srv *userService) Get(ctx context.Context, id string) (domain.User, error) {
 	return srv.userRepository.Get(ctx, id)
 }
 
-func (srv *service) Create(ctx context.Context, id, name, lastName, email string) (domain.User, error) {
+func (srv *userService) Create(ctx context.Context, id, name, lastName, email string) (domain.User, error) {
 	user, err := domain.NewUser(id, name, lastName, email)
 
-	if err != nil {
+	if err != nil || user.ID == "" {
 		return domain.User{}, err
 	}
 
@@ -49,7 +49,7 @@ func (srv *service) Create(ctx context.Context, id, name, lastName, email string
 	return user, nil
 }
 
-func (srv *service) UpdateUserDetails(ctx context.Context, id string, name, lastName, email string) (domain.User, error) {
+func (srv *userService) UpdateUserDetails(ctx context.Context, id string, name, lastName, email string) (domain.User, error) {
 	existing, err := srv.Get(ctx, id)
 	updated := existing
 

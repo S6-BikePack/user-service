@@ -122,7 +122,7 @@ func (handler *HTTPHandler) Create(c *gin.Context) {
 	body := dto.BodyCreateUser{}
 	err := c.BindJSON(&body)
 
-	if err != nil {
+	if err != nil || body.ID == "" {
 		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
@@ -151,7 +151,7 @@ func (handler *HTTPHandler) Create(c *gin.Context) {
 // @Schemes
 // @Description  updates a users name, last name
 // @Accept       json
-// @Param        user  body  dto.BodyUpdateUser  true  "Update user"
+// @Param        user  body  dto.BodyCreateUser  true  "Update user"
 // @Param        id  path  string  true  "User id"
 // @Produce      json
 // @Success      200  {object}  dto.UserResponse

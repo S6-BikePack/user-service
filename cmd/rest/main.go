@@ -76,7 +76,7 @@ func main() {
 		logger.Fatal(context.Background(), err)
 	}
 
-	userRepository, err := repositories.NewCockroachDB(db)
+	userRepository, err := repositories.NewUserRepository(db)
 
 	if err != nil {
 		logger.Fatal(context.Background(), err)
@@ -98,7 +98,7 @@ func main() {
 	// Setup Services
 	//--------------------------------------------------------------------------------------
 
-	userService := services.New(userRepository, rmqPublisher)
+	userService := services.NewUserService(userRepository, rmqPublisher)
 
 	//--------------------------------------------------------------------------------------
 	// Setup HTTP server
