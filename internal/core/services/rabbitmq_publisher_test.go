@@ -161,7 +161,7 @@ func (suite *RabbitMQPublisherTestSuite) TestRabbitMQPublisher_UpdateUserDetails
 
 	suite.NoError(err)
 
-	err = suite.TestPublisher.CreateUser(context.Background(), suite.TestData.User)
+	err = suite.TestPublisher.UpdateUserDetails(context.Background(), suite.TestData.User)
 
 	suite.NoError(err)
 
