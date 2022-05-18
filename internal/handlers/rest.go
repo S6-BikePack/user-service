@@ -4,22 +4,29 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"github.com/swaggo/gin-swagger/swaggerFiles"
 	"github.com/swaggo/swag/example/basic/docs"
+	"go.opentelemetry.io/otel/trace"
 	"net/http"
-	"user-service/internal/core/ports"
+	"user-service/config"
+	"user-service/internal/core/interfaces"
 	"user-service/pkg/authorization"
 	"user-service/pkg/dto"
+	"user-service/pkg/logging"
 )
 import "github.com/gin-gonic/gin"
 
 type HTTPHandler struct {
-	userService ports.UserService
+	userService interfaces.UserService
 	router      *gin.Engine
+	logger      logging.Logger
+	config      *config.Config
 }
 
-func NewRest(userService ports.UserService, router *gin.Engine) *HTTPHandler {
+func NewRest(userService interfaces.UserService, router *gin.Engine, logger logging.Logger, config *config.Config) *HTTPHandler {
 	return &HTTPHandler{
 		userService: userService,
 		router:      router,
+		config:      config,
+		logger:      logger,
 	}
 }
 
@@ -32,8 +39,8 @@ func (handler *HTTPHandler) SetupEndpoints() {
 }
 
 func (handler *HTTPHandler) SetupSwagger() {
-	docs.SwaggerInfo.Title = "User service API"
-	docs.SwaggerInfo.Description = "The user service manages all users for the BikePack system."
+	docs.SwaggerInfo.Title = handler.config.Server.Service + " API"
+	docs.SwaggerInfo.Description = handler.config.Server.Description
 
 	handler.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 }
@@ -44,19 +51,24 @@ func (handler *HTTPHandler) SetupSwagger() {
 // @Description  gets all users in the system
 // @Accept       json
 // @Produce      json
-// @Success      200  {object}  []domain.User
+// @Success      200  {object}  dto.UserListResponse
 // @Router       /api/users [get]
 func (handler *HTTPHandler) GetAll(c *gin.Context) {
+	ctx := c.Request.Context()
+	span := trace.SpanFromContext(ctx)
+	defer span.End()
+
 	if authorization.NewRest(c).AuthorizeAdmin() {
 
-		users, err := handler.userService.GetAll()
+		users, err := handler.userService.GetAll(ctx)
 
 		if err != nil {
 			c.AbortWithStatus(http.StatusNotFound)
 			return
 		}
 
-		c.JSON(http.StatusOK, users)
+		c.JSON(http.StatusOK, dto.CreateUserListResponse(users))
+		return
 	}
 
 	c.AbortWithStatus(http.StatusUnauthorized)
@@ -68,21 +80,26 @@ func (handler *HTTPHandler) GetAll(c *gin.Context) {
 // @Param        id     path  string           true  "User id"
 // @Description  gets a user from the system by its ID
 // @Produce      json
-// @Success      200  {object}  domain.User
+// @Success      200  {object}  dto.UserResponse
 // @Router       /api/users/{id} [get]
 func (handler *HTTPHandler) Get(c *gin.Context) {
+	ctx := c.Request.Context()
+	span := trace.SpanFromContext(ctx)
+	defer span.End()
+
 	auth := authorization.NewRest(c)
 
 	if auth.AuthorizeAdmin() || auth.AuthorizeMatchingId(c.Param("id")) {
 
-		user, err := handler.userService.Get(c.Param("id"))
+		user, err := handler.userService.Get(ctx, c.Param("id"))
 
 		if err != nil {
 			c.AbortWithStatus(http.StatusNotFound)
 			return
 		}
 
-		c.JSON(http.StatusOK, user)
+		c.JSON(http.StatusOK, dto.CreateUserResponse(user))
+		return
 	}
 
 	c.AbortWithStatus(http.StatusUnauthorized)
@@ -95,28 +112,35 @@ func (handler *HTTPHandler) Get(c *gin.Context) {
 // @Accept       json
 // @Param        user  body  dto.BodyCreateUser  true  "Add user"
 // @Produce      json
-// @Success      200  {object}  dto.ResponseCreateUser
+// @Success      200  {object}  dto.UserResponse
 // @Router       /api/users [post]
 func (handler *HTTPHandler) Create(c *gin.Context) {
+	ctx := c.Request.Context()
+	span := trace.SpanFromContext(ctx)
+	defer span.End()
+
 	body := dto.BodyCreateUser{}
 	err := c.BindJSON(&body)
 
-	if err != nil {
+	if err != nil || body.ID == "" {
 		c.AbortWithStatus(http.StatusBadRequest)
+		return
 	}
 
 	auth := authorization.NewRest(c)
 
 	if auth.AuthorizeAdmin() || auth.AuthorizeMatchingId(body.ID) {
 
-		user, err := handler.userService.Create(body.ID, body.Name, body.LastName, body.Email)
+		user, err := handler.userService.Create(ctx, body.ID, body.Name, body.LastName, body.Email)
 
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			c.AbortWithStatus(http.StatusInternalServerError)
+			handler.logger.Error(ctx, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusCreated, dto.BuildResponseCreateUser(user))
+		c.JSON(http.StatusCreated, dto.CreateUserResponse(user))
+		return
 	}
 
 	c.AbortWithStatus(http.StatusUnauthorized)
@@ -127,12 +151,16 @@ func (handler *HTTPHandler) Create(c *gin.Context) {
 // @Schemes
 // @Description  updates a users name, last name
 // @Accept       json
-// @Param        user  body  dto.BodyUpdateUser  true  "Update user"
+// @Param        user  body  dto.BodyCreateUser  true  "Update user"
 // @Param        id  path  string  true  "User id"
 // @Produce      json
-// @Success      200  {object}  dto.ResponseUpdateUser
+// @Success      200  {object}  dto.UserResponse
 // @Router       /api/users/{id} [put]
 func (handler *HTTPHandler) Update(c *gin.Context) {
+	ctx := c.Request.Context()
+	span := trace.SpanFromContext(ctx)
+	defer span.End()
+
 	auth := authorization.NewRest(c)
 
 	if auth.AuthorizeAdmin() || auth.AuthorizeMatchingId(c.Param("id")) {
@@ -144,14 +172,15 @@ func (handler *HTTPHandler) Update(c *gin.Context) {
 			c.AbortWithStatus(http.StatusBadRequest)
 		}
 
-		user, err := handler.userService.UpdateUserDetails(c.Param("id"), body.Name, body.LastName, body.Email)
+		user, err := handler.userService.UpdateUserDetails(ctx, c.Param("id"), body.Name, body.LastName, body.Email)
 
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			c.AbortWithStatus(http.StatusInternalServerError)
+			handler.logger.Error(ctx, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusOK, dto.BuildResponseCreateUser(user))
+		c.JSON(http.StatusOK, dto.CreateUserResponse(user))
 
 	}
 

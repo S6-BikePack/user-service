@@ -13,9 +13,6 @@
 *.so
 *.dylib
 
-# Test binary, built with `go test -c`
-*.test
-
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
@@ -109,3 +106,4 @@ fabric.properties
 .idea/caches/build_file_checksums.ser
 
 # End of https://www.toptal.com/developers/gitignore/api/goland,go
+/dist/

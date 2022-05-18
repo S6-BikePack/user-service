@@ -10,9 +10,9 @@
 
 
 <!-- Badges -->
-<p>
-
-</p>
+[![golangci-lint](https://github.com/S6-BikePack/user-service/actions/workflows/golangci-lint.yml/badge.svg)](https://github.com/S6-BikePack/user-service/actions/workflows/golangci-lint.yml)
+[![Makefile CI](https://github.com/S6-BikePack/user-service/actions/workflows/run-tests.yml/badge.svg)](https://github.com/S6-BikePack/user-service/actions/workflows/run-tests.yml)
+[![Build](https://github.com/S6-BikePack/user-service/actions/workflows/build.yml/badge.svg)](https://github.com/S6-BikePack/user-service/actions/workflows/build.yml)
 
 <h4>
     <a href="https://github.com/S6-BikePack">Home</a>
@@ -75,13 +75,34 @@ For this service I have chosen a Hexagonal architecture. This keeps the service 
 <!-- Env Variables -->
 ### 🔑 Environment Variables
 
-This service has the following environment variables that can be set:
+This service can be configured using environment variables or a json file. The location of the file can be passed to the `config` environment variable.
 
-`PORT` - Port the service runs on
+The following configuration is available:
 
-`RABBITMQ` - RabbitMQ connection string
-
-`Database` - Database connection string
+```json
+{
+    "server": {
+      "service": "string",
+      "port": "string",
+      "description": "string"
+    },
+    "rabbitMQ": {
+      "host": "string",
+      "port": "int",
+      "user": "string",
+      "password": "string",
+      "exchange": "string"
+    },
+    "database": {
+      "host": "string",
+      "port": "int",
+      "user": "string",
+      "password": "string",
+      "database": "string",
+      "debug": "bool"
+    }
+}
+```
 
 <!-- Messages -->
 ## 📨 Messages
@@ -150,7 +171,7 @@ The easiest way to setup the project is to use the Docker-Compose file from the 
 <!-- Running Tests -->
 ### 🧪 Running Tests
 
--
+The tests in the project can easily be run using make and the `make run-tests` command. This will start the required docker containers and run all tests in the project.
 
 <!-- Run Locally -->
 ### 🏃 Run Locally
