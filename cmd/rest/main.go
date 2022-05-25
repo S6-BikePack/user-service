@@ -3,10 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/uptrace/opentelemetry-go-extra/otelgorm"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 	"os"
 	"user-service/config"
 	"user-service/internal/core/services"
@@ -15,6 +11,11 @@ import (
 	"user-service/pkg/logging"
 	"user-service/pkg/rabbitmq"
 	"user-service/pkg/tracing"
+
+	"github.com/uptrace/opentelemetry-go-extra/otelgorm"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 
 	"github.com/gin-gonic/gin"
 )
@@ -33,13 +34,7 @@ func main() {
 	// Setup Logging and Tracing
 	//--------------------------------------------------------------------------------------
 
-	logger, err := logging.NewSugaredOtelZap(cfg)
-	defer func(logger *logging.OtelzapSugaredLogger) {
-		err = logger.Close()
-		if err != nil {
-			panic(err)
-		}
-	}(logger)
+	logger, err := logging.NewSimpleLogger(cfg)
 
 	if err != nil {
 		panic(err)
@@ -48,7 +43,7 @@ func main() {
 	tracer, err := tracing.NewOpenTracing(cfg.Server.Service, cfg.Tracing.Host, cfg.Tracing.Port)
 
 	if err != nil {
-		panic(err)
+		logger.Warning(context.Background(), "Failed to setup tracing: %v", err)
 	}
 
 	//--------------------------------------------------------------------------------------
