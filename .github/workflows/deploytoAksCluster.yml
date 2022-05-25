@@ -1,4 +1,4 @@
-name: "Deploy cluster"
+name: "Deploy-cluster"
 
 on: 
   push:
@@ -45,4 +45,4 @@ jobs:
           manifests/deployment.yml
           manifests/service.yml
         images: |
-          bikepack.azurecr.io/bikepack/service-area-service:latest
+          bikepack.azurecr.io/bikepack/user-service:latest
