@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	amqp "github.com/rabbitmq/amqp091-go"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 	"user-service/config"
 	"user-service/internal/core/domain"
 	"user-service/pkg/rabbitmq"
+
+	amqp "github.com/rabbitmq/amqp091-go"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type rabbitmqPublisher struct {
@@ -37,14 +38,16 @@ func (rmq *rabbitmqPublisher) publishJson(ctx context.Context, topic string, bod
 		return err
 	}
 
-	_, span := rmq.tracer.Start(ctx, "publish")
+	if rmq.tracer != nil {
+		_, span := rmq.tracer.Start(ctx, "publish")
 
-	span.AddEvent(
-		"Published message to rabbitmq",
-		trace.WithAttributes(
-			attribute.String("topic", topic),
-			attribute.String("body", string(js))))
-	span.End()
+		span.AddEvent(
+			"Published message to rabbitmq",
+			trace.WithAttributes(
+				attribute.String("topic", topic),
+				attribute.String("body", string(js))))
+		span.End()
+	}
 
 	err = rmq.rabbitmq.Channel.Publish(
 		rmq.config.RabbitMQ.Exchange,

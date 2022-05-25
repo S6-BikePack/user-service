@@ -8,8 +8,8 @@ import (
 	"user-service/internal/core/services"
 	"user-service/internal/handlers"
 	"user-service/internal/repositories"
-	"user-service/pkg/azure"
 	"user-service/pkg/logging"
+	"user-service/pkg/rabbitmq"
 	"user-service/pkg/tracing"
 
 	"github.com/uptrace/opentelemetry-go-extra/otelgorm"
@@ -80,22 +80,22 @@ func main() {
 	}
 
 	//--------------------------------------------------------------------------------------
-	// Setup Azure Service Bus
+	// Setup RabbitMQ
 	//--------------------------------------------------------------------------------------
 
-	azServiceBus, err := azure.NewAzureServiceBus(cfg)
+	rmqServer, err := rabbitmq.NewRabbitMQ(cfg)
 
 	if err != nil {
 		logger.Fatal(context.Background(), err)
 	}
 
-	azPublisher := services.NewAzurePublisher(azServiceBus, cfg)
+	rmqPublisher := services.NewRabbitMQPublisher(rmqServer, tracer, cfg)
 
 	//--------------------------------------------------------------------------------------
 	// Setup Services
 	//--------------------------------------------------------------------------------------
 
-	userService := services.NewUserService(userRepository, azPublisher)
+	userService := services.NewUserService(userRepository, rmqPublisher)
 
 	//--------------------------------------------------------------------------------------
 	// Setup HTTP server

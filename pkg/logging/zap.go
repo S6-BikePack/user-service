@@ -2,20 +2,11 @@ package logging
 
 import (
 	"context"
+	"user-service/config"
+
 	"github.com/uptrace/opentelemetry-go-extra/otelzap"
 	"go.uber.org/zap"
-	"user-service/config"
 )
-
-type Logger interface {
-	Close() error
-	Panic(ctx context.Context, args ...interface{})
-	Fatal(ctx context.Context, args ...interface{})
-	Info(ctx context.Context, msg string, keysAndValues ...interface{})
-	Debug(ctx context.Context, msg string, keysAndValues ...interface{})
-	Warning(ctx context.Context, msg string, keysAndValues ...interface{})
-	Error(ctx context.Context, msg string, keysAndValues ...interface{})
-}
 
 type OtelzapSugaredLogger struct {
 	Logger otelzap.SugaredLogger
