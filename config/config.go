@@ -1,14 +1,21 @@
 package config
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"strings"
+
+	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 )
 
 type Config struct {
-	Server   Server
-	RabbitMQ RabbitMQ
-	Database Database
-	Tracing  Tracing
+	Server          Server
+	RabbitMQ        RabbitMQ
+	Database        Database
+	Tracing         Tracing
+	AzureServiceBus AzureServiceBus
 }
 
 type Server struct {
@@ -25,6 +32,10 @@ type RabbitMQ struct {
 	Exchange string
 }
 
+type AzureServiceBus struct {
+	ConnectionString string
+}
+
 type Database struct {
 	Host     string
 	Port     int
@@ -32,6 +43,7 @@ type Database struct {
 	Password string
 	Database string
 	Debug    bool
+	SSLMode  string
 }
 
 type Tracing struct {
@@ -39,16 +51,66 @@ type Tracing struct {
 	Port int
 }
 
+func initDefaultValues() *Config {
+	defaultConfig := &Config{}
+	defaultConfig.Server.Service = "user-service"
+	defaultConfig.Server.Port = "1234"
+	defaultConfig.Server.Description = "Bikepack User Service"
+
+	defaultConfig.RabbitMQ.Host = "localhost"
+	defaultConfig.RabbitMQ.Port = 5672
+	defaultConfig.RabbitMQ.User = "user"
+	defaultConfig.RabbitMQ.Password = "password"
+	defaultConfig.RabbitMQ.Exchange = "topics"
+
+	defaultConfig.AzureServiceBus.ConnectionString = "Endpoint=sb://servicebus.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=yourkey"
+
+	defaultConfig.Database.Host = "localhost"
+	defaultConfig.Database.Port = 5432
+	defaultConfig.Database.User = "user"
+	defaultConfig.Database.Password = "password"
+	defaultConfig.Database.Database = "user"
+	defaultConfig.Database.Debug = false
+	defaultConfig.Database.SSLMode = "disable"
+
+	defaultConfig.Tracing.Host = ""
+	defaultConfig.Tracing.Port = 0
+
+	return defaultConfig
+}
+
 func UseConfig(path string) (*Config, error) {
 	v := viper.New()
 
+	defaults := initDefaultValues()
+
 	v.SetConfigName(path)
 	v.AddConfigPath(".")
-	v.AutomaticEnv()
 
+	// If a config file is found, read it in. Otherwise, use defaults.
 	if err := v.ReadInConfig(); err != nil {
-		return nil, err
+		cfgMap := make(map[string]interface{})
+		err := mapstructure.Decode(defaults, &cfgMap)
+		if err != nil {
+			fmt.Println("Error:", err)
+		}
+
+		cfgJsonBytes, err := json.Marshal(&cfgMap)
+		if err != nil {
+			fmt.Println("Error:", err)
+		}
+
+		v.SetConfigType("json")
+		err = v.ReadConfig(bytes.NewReader(cfgJsonBytes))
+		if err != nil {
+			fmt.Println("Error:", err)
+		}
 	}
+
+	replacer := strings.NewReplacer(".", "_")
+	v.SetEnvKeyReplacer(replacer)
+
+	v.AutomaticEnv()
 
 	var config Config
 

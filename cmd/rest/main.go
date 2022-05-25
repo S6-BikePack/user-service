@@ -27,7 +27,7 @@ func main() {
 	cfg, err := config.UseConfig(cfgPath)
 
 	if err != nil {
-		panic(err)
+		fmt.Printf("Failed to load config: %v", err)
 	}
 
 	//--------------------------------------------------------------------------------------
