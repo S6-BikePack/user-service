@@ -29,6 +29,18 @@ spec:
           - mountPath: "/mnt/secrets-store"
             name: secrets-store01
             readOnly: true
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 1234
+          periodSeconds: 30
+          timeoutSeconds: 30
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 1234
+          periodSeconds: 30
+          timeoutSeconds: 30
         env:
         - name: SERVER_PORT
           value: ":1234"

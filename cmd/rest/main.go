@@ -110,6 +110,7 @@ func main() {
 	deliveryHandler := handlers.NewRest(userService, router, logger, cfg)
 	deliveryHandler.SetupEndpoints()
 	deliveryHandler.SetupSwagger()
+	deliveryHandler.SetupHealthprobe()
 
 	logger.Fatal(context.Background(), router.Run(cfg.Server.Port))
 }

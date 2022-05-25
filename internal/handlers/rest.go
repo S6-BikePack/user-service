@@ -1,18 +1,19 @@
 package handlers
 
 import (
-	ginSwagger "github.com/swaggo/gin-swagger"
-	"github.com/swaggo/gin-swagger/swaggerFiles"
-	"github.com/swaggo/swag/example/basic/docs"
-	"go.opentelemetry.io/otel/trace"
 	"net/http"
 	"user-service/config"
 	"user-service/internal/core/interfaces"
 	"user-service/pkg/authorization"
 	"user-service/pkg/dto"
 	"user-service/pkg/logging"
+
+	"github.com/gin-gonic/gin"
+	ginSwagger "github.com/swaggo/gin-swagger"
+	"github.com/swaggo/gin-swagger/swaggerFiles"
+	"github.com/swaggo/swag/example/basic/docs"
+	"go.opentelemetry.io/otel/trace"
 )
-import "github.com/gin-gonic/gin"
 
 type HTTPHandler struct {
 	userService interfaces.UserService
@@ -43,6 +44,12 @@ func (handler *HTTPHandler) SetupSwagger() {
 	docs.SwaggerInfo.Description = handler.config.Server.Description
 
 	handler.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+}
+
+func (handler *HTTPHandler) SetupHealthprobe() {
+	handler.router.GET("/health", func(c *gin.Context) {
+		c.String(http.StatusOK, "OK")
+	})
 }
 
 // GetAll godoc
