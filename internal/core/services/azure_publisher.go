@@ -36,7 +36,9 @@ func (az *azurePublisher) publishJson(ctx context.Context, topic string, body in
 		return err
 	}
 
-	sender, err := az.serviceBus.Client.NewSender(fmt.Sprintf("user.%s", topic), nil)
+	topic = fmt.Sprintf("user.%s", topic)
+
+	sender, err := az.serviceBus.Client.NewSender(topic, nil)
 
 	defer func(sender *azservicebus.Sender, ctx context.Context) {
 		_ = sender.Close(ctx)
@@ -47,7 +49,8 @@ func (az *azurePublisher) publishJson(ctx context.Context, topic string, body in
 	}
 
 	err = sender.SendMessage(ctx, &azservicebus.Message{
-		Body: js,
+		Body:    js,
+		Subject: &topic,
 	}, nil)
 
 	if err != nil {
